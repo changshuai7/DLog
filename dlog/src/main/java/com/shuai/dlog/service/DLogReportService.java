@@ -23,6 +23,9 @@ public class DLogReportService extends JobIntentService {
     public static final String REPORT_ERROR_COUNT_SP_KEY = "D_LOG_REPORT_ERROR_COUNT_SP_KEY";
     private static final int JOB_ID = 1000;
 
+    //TODO 其实延迟上报是有bug的，因为如果有线程同时访问launchService,enqueueWork内部又是异步的。这样会导致最终依然有多个线程进入了方法中，让enqueueWork执行多次。
+    //TODO 这样的结果导致了onHandleWork有可能会被执行多次。
+    //TODO 好在onHandleWork是one by one执行的，即使多次执行，没有严格按照固定时间延迟上报，依然不会引起数据的重复上报。只不过后上报的数据就为空了。
     public static void launchService(Context ctx, boolean focusLaunch) {
         if (reportCheck() || focusLaunch) {
             try {
@@ -39,7 +42,7 @@ public class DLogReportService extends JobIntentService {
         /**
          * JobIntentService执行任务的顺序为one by one。所以最好保证onHandleWork中的任务为同步任务
          */
-        Logger.d("onHandleWork执行");
+        Logger.d("DLogReportService","onHandleWork执行");
         if (Util.isNetworkConnected(DLogConfig.getApp())){
             report();
         }else{
@@ -92,6 +95,7 @@ public class DLogReportService extends JobIntentService {
         long curTime = System.currentTimeMillis();
         if (DLogConfig.getConfig().getBaseConfig() != null && DLogConfig.getConfig().getBaseConfig().reportDelay() > 0) { //延时>0的情况下，开启延时上报策略。
             if (curTime - lastReportTime > DLogConfig.getConfig().getBaseConfig().reportDelay()) {
+                Logger.d("DLogReportService","策略通过 "+"lastTime = "+lastReportTime+",curTime="+curTime +"，线程名字:"+Thread.currentThread().getName());
                 return true; //时间合理通过
             }
         }

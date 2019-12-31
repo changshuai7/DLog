@@ -96,6 +96,11 @@ public class MainActivity extends AppCompatActivity {
                  * 建议开发者在此处上层通过自己的网络请求将日志上传到服务器，同时给DLog一个结果回调
                  *
                  */
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
                 callback.onSuccess();
 //                callback.onFail("网络请求失败");
