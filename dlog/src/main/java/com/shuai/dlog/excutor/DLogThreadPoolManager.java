@@ -30,16 +30,16 @@ public class DLogThreadPoolManager {
 
             @Override
             public Thread newThread(Runnable r) {
-                return new Thread(r, "ThreadPoolManager # thread_for_insert_statistics_to_db" + mCount.getAndIncrement());
+                return new Thread(r, "ThreadPoolManager # thread_for_insert_log_to_db" + mCount.getAndIncrement());
             }
         };
         executor = new ThreadPoolExecutor(
-                CORE_POOL_SIZE,
-                MAXIMUM_POOL_SIZE,
-                KEEP_ALIVE_SECONDS,
-                TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>(128),
-                sThreadFactory,
+                CORE_POOL_SIZE,                                 //核心线程数
+                MAXIMUM_POOL_SIZE,                              //最大线程数
+                KEEP_ALIVE_SECONDS,                             //非核心线程的超时时间
+                TimeUnit.SECONDS,                               //单位
+                new LinkedBlockingQueue<Runnable>(128),         //任务队列
+                sThreadFactory,                                 //线程工厂
                 new RejectedExecutionHandler() {
                     @Override
                     public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
