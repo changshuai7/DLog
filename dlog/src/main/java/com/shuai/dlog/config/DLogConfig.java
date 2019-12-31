@@ -1,8 +1,10 @@
 package com.shuai.dlog.config;
 
 import android.app.Application;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 
+import com.shuai.dlog.service.DLogAlarmReportService;
 import com.shuai.dlog.utils.Logger;
 
 public class DLogConfig {
@@ -41,7 +43,13 @@ public class DLogConfig {
 
         public Config baseConfig(DLogBaseConfigProvider baseConfig) {
             this.baseConfig = baseConfig;
-            Logger.debug(baseConfig.isDebug());//设置log日志模式
+
+            //定时任务时间大于0.则开启定时任务
+            if (baseConfig.reportAlarm() > 0){
+                DLogConfig.getApp().startService(new Intent(DLogConfig.getApp(), DLogAlarmReportService.class));
+            }
+            //设置Log日志打印
+            Logger.debug(baseConfig.isDebug());
             return this;
         }
 

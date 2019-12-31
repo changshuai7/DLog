@@ -19,16 +19,9 @@ import java.util.List;
 public class DLogReportService extends JobIntentService {
 
     //用于存储时间的SP的key
-    public static final String REPORT_TIME_SP_KEY = DLogReportService.class.getSimpleName() + "_lastReportTime_key";
-    public static final String REPORT_ERROR_COUNT_SP_KEY = "REPORT_ERROR_COUNT_SP_KEY";
+    public static final String REPORT_TIME_SP_KEY = "D_LOG_REPORT_TIME_SP_KEY";
+    public static final String REPORT_ERROR_COUNT_SP_KEY = "D_LOG_REPORT_ERROR_COUNT_SP_KEY";
     private static final int JOB_ID = 1000;
-
-    //上报延时：默认5分钟一次
-    private static final long DEFAULT_DELAY = 5 * 60 * 1000;
-    private static final long REPORT_DELAY = DLogConfig.getConfig().getBaseConfig() == null ? DEFAULT_DELAY : DLogConfig.getConfig().getBaseConfig().reportDelay();
-
-    //是否正在上报中.
-    protected boolean isReporting = false;
 
     public static void launchService(Context ctx, boolean focusLaunch) {
         if (reportCheck() || focusLaunch) {
@@ -43,17 +36,14 @@ public class DLogReportService extends JobIntentService {
 
     @Override
     protected void onHandleWork(@NonNull Intent intent) {
+        /**
+         * JobIntentService执行任务的顺序为one by one。所以最好保证onHandleWork中的任务为同步任务
+         */
         Logger.d("onHandleWork执行");
-        if (isReporting) {
-            if (DLogConfig.getConfig().getBaseConfig().isDebug()) {
-                Logger.e("正在上报中...return");
-            }
-        } else {
-            if (Util.isNetworkConnected(DLogConfig.getApp())){
-                report();
-            }else{
-                Logger.e("网络连接不可用");
-            }
+        if (Util.isNetworkConnected(DLogConfig.getApp())){
+            report();
+        }else{
+            Logger.e("网络连接不可用");
         }
     }
 
@@ -64,11 +54,9 @@ public class DLogReportService extends JobIntentService {
         List<DLogModel> dLogModels = DLogDBDao.getInstance(DLogConfig.getApp()).loadAllLogDatas();
 
         if (DLogConfig.getConfig().getReportConfig() != null) {
-            isReporting = true;
             DLogConfig.getConfig().getReportConfig().report(dLogModels, new DLogReportCallback() {
                 @Override
                 public void onSuccess() {
-                    isReporting = false;
                     Logger.d("【日志数据上报成功】");
                     PrefHelper.remove(REPORT_ERROR_COUNT_SP_KEY);//次数重置为0
                     DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
@@ -76,7 +64,6 @@ public class DLogReportService extends JobIntentService {
 
                 @Override
                 public void onFail(String msg) {
-                    isReporting = false;
                     Logger.e("【日志数据上报失败】错误信息为"+msg);
 
                     int anInt = PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0);
@@ -92,20 +79,23 @@ public class DLogReportService extends JobIntentService {
             Logger.e("DLogBaseConfigProvider没有配置！");
         }
 
-
     }
 
     /**
      * 检查上报时间
      *
-     * @return
+     * @return true：可以上报；false：不可以上报
      */
     public static boolean reportCheck() {
+
         long lastReportTime = PrefHelper.getLong(REPORT_TIME_SP_KEY, 0);
         long curTime = System.currentTimeMillis();
-        if (lastReportTime > curTime || curTime - lastReportTime > REPORT_DELAY) {
-            return true;
+        if (DLogConfig.getConfig().getBaseConfig() != null && DLogConfig.getConfig().getBaseConfig().reportDelay() > 0) { //延时>0的情况下，开启延时上报策略。
+            if (curTime - lastReportTime > DLogConfig.getConfig().getBaseConfig().reportDelay()) {
+                return true; //时间合理通过
+            }
         }
+
         return false;
     }
 }
