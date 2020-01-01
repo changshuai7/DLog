@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
              */
             @Override
             public long reportSyncTimeOut() {
-                return 3*1000;
+                return 5*1000;
             }
         });
 
