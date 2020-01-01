@@ -7,6 +7,10 @@ import android.support.annotation.NonNull;
 import com.shuai.dlog.service.DLogAlarmReportService;
 import com.shuai.dlog.utils.Logger;
 
+/**
+ * DLog配置工具
+ * @author changshuai
+ */
 public class DLogConfig {
 
     private static DLogConfig.Config sConfig;

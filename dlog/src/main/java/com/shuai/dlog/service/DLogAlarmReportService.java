@@ -14,6 +14,11 @@ import com.shuai.dlog.utils.Logger;
 
 import java.util.Date;
 
+/**
+ * 定时上报任务
+ * 采用AlarmManger+Service+BroadcastReceiver实现长期精确的定时任务
+ * @author changshuai
+ */
 public class DLogAlarmReportService extends Service {
     @Override
     public IBinder onBind(Intent intent) {

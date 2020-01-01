@@ -63,6 +63,8 @@ import java.util.concurrent.TimeoutException;
  * 四、>>>>> DLog埋点超时策略 <<<<<
  * DLog将上报的处理交给上层处理，上层可以在reportSync中方法中执行同步耗时的操作处理数据，但是，并不意味着底层会无限期阻塞于此。
  * DLog中规定了超时时间reportSyncTimeOut，如果在超时时间内上层未能给到回调，DLog会默认认为上报失败。
+ *
+ * @author changshuai
  */
 
 public class DLogReportService extends JobIntentService {

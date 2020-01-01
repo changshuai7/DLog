@@ -3,13 +3,10 @@ package com.shuai.example.dlog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Toast;
-
 import com.shuai.dlog.DLog;
 import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.config.DLogReportConfigProvider;
 import com.shuai.dlog.model.DLogModel;
-import com.shuai.dlog.report.DLogReportCallback;
 import com.shuai.dlog.report.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 

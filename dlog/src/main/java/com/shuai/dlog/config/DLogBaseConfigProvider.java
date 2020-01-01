@@ -1,6 +1,9 @@
 package com.shuai.dlog.config;
 
-
+/**
+ * DLog基本配置
+ * @author changshuai
+ */
 abstract public class DLogBaseConfigProvider {
 
     /**
@@ -11,7 +14,7 @@ abstract public class DLogBaseConfigProvider {
     public abstract boolean isDebug();
 
     /**
-     * 延时上报配置
+     * 延时上报配置。默认为5分钟
      * 若<=0.则取消延时上报策略
      *
      * @return
@@ -21,7 +24,7 @@ abstract public class DLogBaseConfigProvider {
     }
 
     /**
-     * 定时上报配置
+     * 定时上报配置。默认为10分钟
      * 若<=0.则取消定时上报策略
      *
      * @return

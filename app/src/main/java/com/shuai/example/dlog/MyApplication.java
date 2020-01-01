@@ -41,7 +41,7 @@ public class MyApplication extends Application {
              */
             @Override
             public long reportAlarm() {
-                return -10*1000;
+                return 10*1000;
             }
         });
     }
