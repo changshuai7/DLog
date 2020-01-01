@@ -24,6 +24,7 @@ dependencies {
 
 ### 2.打点策略
 DLog有三种埋点策略:*
+
 1、策略一：轮循上报，通过reportAlarm()配置定时轮循间隔时间。配置若<=0.则取消此策略
 
 2、策略二、延时上报，通过reportDelay()配置延时上报间隔时间。配置若<=0.则取消此策略。即在写入日志的时候记录时间，下次再写入日志时，如果两次写入日志间隔的时间大于约定的reportDelay()时间，那么立即上报，否则不上报。
@@ -102,9 +103,13 @@ DLogConfig.getConfig().reportConfig(new DLogReportConfigProvider() {
 });
 ```
 注意
+
 1、reportSync方法为非主线程，请勿直接做和UI相关的内容。
+
 2、reportSync中务必要执行阻塞方法，即同步耗时的方法，如同步的网络请求等。
+
 3、reportSync方法可以根据你的业务扩展，比如将日志定期存入文件，通过网络上报等。只要保证同步执行耗时任务即可。
+
 4、reportSync默认有超时时间，可通过reportSyncTimeOut配置，默认为60秒。超过此时间，默认返回DLogSyncReportResult.FAIL。
 
 ## 三、使用
