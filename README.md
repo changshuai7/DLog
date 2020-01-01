@@ -67,7 +67,7 @@ DLogConfig.init(this).baseConfig(new DLogBaseConfigProvider() {
          */
         @Override
         public long reportAlarm() {
-                return 15*1000;//为实现效果，这里定义为10秒
+                return 15*1000;//为实现效果，这里定义为15秒
         }
 });
 ```
