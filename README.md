@@ -117,11 +117,11 @@ DLogConfig.getConfig().reportConfig(new DLogReportConfigProvider() {
 1、DB中存储的数据Model：
 
 ```
-private long id;              //数据库自增id，无实际意义
-private String uuid;         //uuid全球唯一识别码
-private String type;         //类型
-private long timestamp;   //时间戳
-private String content;     //内容
+private long id;//数据库自增id，无实际意义
+private String uuid;//uuid全球唯一识别码
+private String type;//类型
+private long timestamp;//时间戳
+private String content;//内容
 ```
 开发者可以根据自己情况取使用type和content
 
