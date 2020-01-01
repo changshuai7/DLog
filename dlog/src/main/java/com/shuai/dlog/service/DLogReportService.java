@@ -9,12 +9,12 @@ import com.shuai.dlog.DLog;
 import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.db.DLogDBDao;
 import com.shuai.dlog.model.DLogModel;
-import com.shuai.dlog.report.DLogReportCallback;
 import com.shuai.dlog.report.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 import com.shuai.dlog.utils.PrefHelper;
 import com.shuai.dlog.utils.Util;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -65,34 +65,41 @@ public class DLogReportService extends JobIntentService {
      */
     private void reportSync(){
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        FutureTask<DLogSyncReportResult> futureTask = new FutureTask<>(new Callable<DLogSyncReportResult>() {
+        FutureTask<ResultObj> futureTask = new FutureTask<>(new Callable<ResultObj>() {
 
             @Override
-            public DLogSyncReportResult call() throws Exception {
+            public ResultObj call() throws Exception {
                 return getSyncReportResult();
             }
         });
 
         executorService.execute(futureTask);
 
-        DLogSyncReportResult result;
+        ResultObj result;
         try {
             result = futureTask.get(DLogConfig.getConfig().getReportConfig().reportSyncTimeOut(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException |TimeoutException e) {
             e.printStackTrace();
-            result = DLogSyncReportResult.FAIL;
+            result = new ResultObj(new ArrayList<String>(),DLogSyncReportResult.FAIL);
+        }finally {
+            executorService.shutdown();
+            futureTask.cancel(true);
         }
 
-        futureTask.cancel(true);
-
         if (result != null) {
-            if (result == DLogSyncReportResult.SUCCESS){
-                Logger.d("【日志数据上报成功】");
+            if (result.getResult() == DLogSyncReportResult.SUCCESS){
+                Logger.d("【日志数据上报成功】"+"uuid为"+result.getUuids().toString());
 
                 PrefHelper.remove(REPORT_ERROR_COUNT_SP_KEY);//失败次数重置为0
-                DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
+                String[] uuidArr = new String[result.uuids.size()];
+                for (int i = 0;i<result.getUuids().size();i++){
+                    uuidArr[i] = result.getUuids().get(i);
+                }
+                DLogDBDao.getInstance(DLogConfig.getApp()).deleteLogDatasByUuid(uuidArr);//TODO 删除可能会失败。。。
+                //注意：这里不可以清空所有日志，万一在上报的过程中，有新的日志写入呢？必须根据日志的uuid删除才可靠。
+                //DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
 
-            }else{
+            }else if(result.getResult() == DLogSyncReportResult.FAIL) {
 
                 int anInt = PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0);
                 PrefHelper.setInt(REPORT_ERROR_COUNT_SP_KEY,++anInt);//失败次数增加1次
@@ -102,29 +109,66 @@ public class DLogReportService extends JobIntentService {
                 if (PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0)<3){
                     DLog.sendAll();//上报失败以后，会强制再次重试。超过3次以后，不再上报。
                 }
+            }else{
+                //..一定不会执行的
+                Logger.e("见鬼了，执行了SUCCESS和FAIL以外的内容");
             }
         }else{
-            Logger.e("DLogSyncReportResult返回值为null");
+            Logger.e("ResultObj结果为null");
         }
     }
 
 
-    private DLogSyncReportResult getSyncReportResult() {
+    private ResultObj getSyncReportResult() {
         PrefHelper.setLong(REPORT_TIME_SP_KEY, System.currentTimeMillis());
 
         List<DLogModel> dLogModels = DLogDBDao.getInstance(DLogConfig.getApp()).loadAllLogDatas();
 
+        List<String> uuids= new ArrayList<>();
         if (dLogModels != null) {
             for (DLogModel model : dLogModels) {
-                Logger.d("即将要上报的所有数据：" + "总长度为：" + dLogModels.size() + "，id为：" + model.getId() + "，内容为：", model.toString());
+                uuids.add(model.getUuid());
+                Logger.d("即将要上报的所有数据：" + "length=" + dLogModels.size() + ",id=" + model.getId() + ",uuid=" + model.getUuid() +",content="+ model.toString());
             }
         }
 
         if (DLogConfig.getConfig().getReportConfig() != null) {
-            return DLogConfig.getConfig().getReportConfig().reportSync(dLogModels);
+            DLogSyncReportResult dLogSyncReportResult = DLogConfig.getConfig().getReportConfig().reportSync(dLogModels);
+            if (dLogSyncReportResult==null){
+                Logger.e("上层的reportSync不能返回为空");
+                return null;
+            }
+            return new ResultObj(uuids,dLogSyncReportResult);
         }else{
             Logger.e("DLogBaseConfigProvider没有配置！");
             return null;
+        }
+    }
+
+
+    private class ResultObj {
+        private List<String> uuids;
+        private DLogSyncReportResult result;
+
+        public ResultObj(List<String> uuids, DLogSyncReportResult result) {
+            this.uuids = uuids;
+            this.result = result;
+        }
+
+        public List<String> getUuids() {
+            return uuids;
+        }
+
+        public void setUuids(List<String> uuids) {
+            this.uuids = uuids;
+        }
+
+        public DLogSyncReportResult getResult() {
+            return result;
+        }
+
+        public void setResult(DLogSyncReportResult result) {
+            this.result = result;
         }
     }
 
@@ -140,7 +184,7 @@ public class DLogReportService extends JobIntentService {
         long curTime = System.currentTimeMillis();
         if (DLogConfig.getConfig().getBaseConfig() != null && DLogConfig.getConfig().getBaseConfig().reportDelay() > 0) { //延时>0的情况下，开启延时上报策略。
             if (curTime - lastReportTime > DLogConfig.getConfig().getBaseConfig().reportDelay()) {
-                Logger.d("DLogReportService","策略通过 "+"lastTime = "+lastReportTime+",curTime="+curTime +"，线程名字:"+Thread.currentThread().getName());
+                Logger.d("DLogReportService","延时上报策略通过，进入上报队列 "+"lastTime = "+lastReportTime+",curTime="+curTime +"，线程名:"+Thread.currentThread().getName());
                 return true; //时间合理通过
             }
         }

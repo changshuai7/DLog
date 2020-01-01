@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.shuai.dlog.DLog;
 import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.model.DLogModel;
 
@@ -46,10 +47,13 @@ public class DLogDBDao extends SQLiteOpenHelper {
     }
 
     private String createTableLog = "CREATE TABLE IF NOT EXISTS " + TABLE_LOG
-            + "(" + DLogModel.DLOG_DB_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + "("
+            + DLogModel.DLOG_DB_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + DLogModel.DLOG_DB_UUID + " TEXT DEFAULT NULL,"
             + DLogModel.DLOG_DB_TYPE + " TEXT DEFAULT NULL,"
             + DLogModel.DLOG_DB_TIMESTAMP + " TEXT DEFAULT NULL,"
-            + DLogModel.DLOG_DB_CONTENT + " TEXT DEFAULT NULL);";
+            + DLogModel.DLOG_DB_CONTENT + " TEXT DEFAULT NULL"
+            +");";
 
 
     /**
@@ -113,6 +117,30 @@ public class DLogDBDao extends SQLiteOpenHelper {
                 closeDatabaseQuietly(database);
             }
 
+        }
+    }
+
+    /**
+     * 根据uuid删除数据库数据
+     * @param uuids
+     * @return
+     */
+    public int[] deleteLogDatasByUuid(String[] uuids) {
+        synchronized (this) {
+            int[] delIDs = new int[uuids.length];
+            SQLiteDatabase database = DLogDBManager.getInstance().openDatabase();
+            try {
+                database.beginTransaction();
+                for (int i = 0, size = uuids.length; i < size; i++) {
+                    delIDs[i] = database.delete(TABLE_LOG, DLogModel.DLOG_DB_UUID + " = ? ", new String[]{uuids[i]});
+                }
+                database.setTransactionSuccessful();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                closeDatabaseQuietly(database);
+            }
+            return delIDs;
         }
     }
 

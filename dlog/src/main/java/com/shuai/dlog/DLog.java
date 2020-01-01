@@ -56,14 +56,14 @@ public class DLog {
      *
      * @return
      */
-    public List<DLogModel> getAll() {
+    public static List<DLogModel> getAll() {
         return DLogDBDao.getInstance(DLogConfig.getApp()).loadAllLogDatas();
     }
 
     /**
      * 清除所有日志内容
      */
-    public void deleteAll() {
+    public static void deleteAll() {
         DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();
     }
 

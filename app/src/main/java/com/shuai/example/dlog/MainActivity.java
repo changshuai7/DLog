@@ -76,7 +76,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                Toast.makeText(MainActivity.this, "测试", Toast.LENGTH_SHORT).show();
+                List<DLogModel> all = DLog.getAll();
+                for (DLogModel model:all){
+                    Logger.d("还剩数据：" + "length=" + all.size() + ",id=" + model.getId() + ",uuid=" + model.getUuid() +",content=", model.toString());
+                }
+                Logger.d("还剩数据条数："+all.size());
 
             }
         });
@@ -98,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                  *
                  */
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(2000);//模拟网络请求，耗时2秒上报
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
