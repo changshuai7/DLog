@@ -25,12 +25,23 @@ public class MyApplication extends Application {
             }
 
             /**
-             * 上报延时。默认为5分钟。可复写实现自己的延时策略。
+             * 延时上报策略配置
+             * 若<=0.则取消延时上报策略
              * @return
              */
             @Override
             public long reportDelay() {
-                return 5 * 1000;
+                return 5 * 1000;//为实现效果，这里定义为5秒
+            }
+
+            /**
+             * 定时上报策略配置
+             * 若<=0.则取消定时上报策略
+             * @return
+             */
+            @Override
+            public long reportAlarm() {
+                return 15*1000;//为实现效果，这里定义为10秒
             }
         });
     }
