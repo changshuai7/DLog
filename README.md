@@ -23,14 +23,15 @@ dependencies {
 ```
 
 ### 2.打点策略
-DLog有三种埋点策略:
+DLog有三种打点策略:
 
 1、策略一：轮循上报，通过reportAlarm()配置定时轮循间隔时间。配置若<=0.则取消此策略
 
 2、策略二、延时上报，通过reportDelay()配置延时上报间隔时间。配置若<=0.则取消此策略。即在写入日志的时候记录时间，下次再写入日志时，如果两次写入日志间隔的时间大于约定的reportDelay()时间，那么立即上报，否则不上报。
 
-3、策略三、强制上报。对于一些非常紧急的日志，可以执行DLog.sendAll();强制上报所有日志。
+3、策略三、强制上报。对于一些非常紧急的日志，可以执行DLog.sendAll(); 强制立即上报所有日志。
 
+注意：上报的日志均为全量日志。
 
 
 ### 3.初始化。
@@ -127,7 +128,7 @@ private String content;//内容
 
 2、存数据：
 ```
-DLog.write(String type, T content); //T为javaben数据 务必保证通过Gson.toJson转换不会出错。
+DLog.write(String type, T content); //T为javabean数据 务必保证通过Gson.toJson转换不会出错。
 ```
 3、立即上传数据（全量数据）
 ```
@@ -138,7 +139,7 @@ DLog.sendAll();
 ```
 DLog.deleteAll();
 ```
-5、获取数据
+5、获取数据(全量数据)
 ```
 DLog.getAll();
 返回List<DLogModel>
