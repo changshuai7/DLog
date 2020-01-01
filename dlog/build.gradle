@@ -23,7 +23,6 @@ android {
             consumerProguardFiles 'proguard-rules.pro'
         }
     }
-    useLibrary 'org.apache.http.legacy'//解决23没有Http包中的一些类库。
 
 }
 
