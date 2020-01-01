@@ -7,6 +7,7 @@ import android.support.v4.app.JobIntentService;
 
 import com.shuai.dlog.DLog;
 import com.shuai.dlog.config.DLogConfig;
+import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.db.DLogDBDao;
 import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.report.DLogSyncReportResult;
@@ -121,7 +122,7 @@ public class DLogReportService extends JobIntentService {
             if (DLogConfig.getConfig().getReportConfig()!=null && DLogConfig.getConfig().getReportConfig().reportSyncTimeOut()>0){
                 timeOut = DLogConfig.getConfig().getReportConfig().reportSyncTimeOut();
             }else{
-                timeOut = 60*1000;
+                timeOut = DLogConstant.REPORT_SYNC_TIMEOUT;
             }
             result = futureTask.get(timeOut, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {//超时等各种错误，则执行上报失败回调

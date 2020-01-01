@@ -1,6 +1,7 @@
 package com.shuai.dlog.config;
 
 
+import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.report.DLogSyncReportResult;
 
@@ -24,6 +25,6 @@ abstract public class DLogReportConfigProvider {
      * 默认为 1分钟
      * @return
      */
-    public long reportSyncTimeOut(){return 60*1000;}
+    public long reportSyncTimeOut(){return DLogConstant.REPORT_SYNC_TIMEOUT;}
 
 }
