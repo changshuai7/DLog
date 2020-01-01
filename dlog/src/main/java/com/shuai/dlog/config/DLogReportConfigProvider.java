@@ -20,9 +20,10 @@ abstract public class DLogReportConfigProvider {
     abstract public DLogSyncReportResult reportSync(List<DLogModel> models);
 
     /**
-     * 设置同步请求的耗时时间
+     * 设置同步请求的超时时间
+     * 默认为 1分钟
      * @return
      */
-    public long reportSyncTimeOut(){return 3*1000;}
+    public long reportSyncTimeOut(){return 60*1000;}
 
 }

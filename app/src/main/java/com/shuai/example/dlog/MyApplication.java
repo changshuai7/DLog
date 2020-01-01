@@ -31,7 +31,7 @@ public class MyApplication extends Application {
              */
             @Override
             public long reportDelay() {
-                return 5 * 1000;
+                return 5 * 1000;//为实现效果，这里定义为5秒
             }
 
             /**
@@ -41,7 +41,7 @@ public class MyApplication extends Application {
              */
             @Override
             public long reportAlarm() {
-                return 10*1000;
+                return 15*1000;//为实现效果，这里定义为10秒
             }
         });
     }

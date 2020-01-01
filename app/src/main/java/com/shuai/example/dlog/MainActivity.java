@@ -69,7 +69,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.test).setOnClickListener(new View.OnClickListener() {
+        /**
+         * 获取所有数据
+         */
+        findViewById(R.id.getAllData).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
@@ -106,9 +109,13 @@ public class MainActivity extends AppCompatActivity {
                 return DLogSyncReportResult.SUCCESS;
             }
 
+            /**
+             * 设置reportSync超时时间，超过此时间，默认返回DLogSyncReportResult.FAIL
+             * @return
+             */
             @Override
             public long reportSyncTimeOut() {
-                return super.reportSyncTimeOut();
+                return 3*1000;
             }
         });
 
