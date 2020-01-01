@@ -10,11 +10,19 @@ import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.db.DLogDBDao;
 import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.report.DLogReportCallback;
+import com.shuai.dlog.report.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 import com.shuai.dlog.utils.PrefHelper;
 import com.shuai.dlog.utils.Util;
 
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class DLogReportService extends JobIntentService {
 
@@ -44,45 +52,82 @@ public class DLogReportService extends JobIntentService {
          */
         Logger.d("DLogReportService","onHandleWork执行");
         if (Util.isNetworkConnected(DLogConfig.getApp())){
-            report();
+            reportSync();
         }else{
             Logger.e("网络连接不可用");
         }
     }
 
 
-    private void report() {
+    /**
+     * 同步上报网络请求
+     * 超时时间为：LogConfig.getConfig().getReportConfig().reportSyncTimeOut()
+     */
+    private void reportSync(){
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        FutureTask<DLogSyncReportResult> futureTask = new FutureTask<>(new Callable<DLogSyncReportResult>() {
+
+            @Override
+            public DLogSyncReportResult call() throws Exception {
+                return getSyncReportResult();
+            }
+        });
+
+        executorService.execute(futureTask);
+
+        DLogSyncReportResult result;
+        try {
+            result = futureTask.get(DLogConfig.getConfig().getReportConfig().reportSyncTimeOut(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | ExecutionException |TimeoutException e) {
+            e.printStackTrace();
+            result = DLogSyncReportResult.FAIL;
+        }
+
+        futureTask.cancel(true);
+
+        if (result != null) {
+            if (result == DLogSyncReportResult.SUCCESS){
+                Logger.d("【日志数据上报成功】");
+
+                PrefHelper.remove(REPORT_ERROR_COUNT_SP_KEY);//失败次数重置为0
+                DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
+
+            }else{
+
+                int anInt = PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0);
+                PrefHelper.setInt(REPORT_ERROR_COUNT_SP_KEY,++anInt);//失败次数增加1次
+
+                Logger.e("【日志数据上报失败】"+"第"+PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY,0)+"次");
+
+                if (PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0)<3){
+                    DLog.sendAll();//上报失败以后，会强制再次重试。超过3次以后，不再上报。
+                }
+            }
+        }else{
+            Logger.e("DLogSyncReportResult返回值为null");
+        }
+    }
+
+
+    private DLogSyncReportResult getSyncReportResult() {
         PrefHelper.setLong(REPORT_TIME_SP_KEY, System.currentTimeMillis());
 
         List<DLogModel> dLogModels = DLogDBDao.getInstance(DLogConfig.getApp()).loadAllLogDatas();
 
-        if (DLogConfig.getConfig().getReportConfig() != null) {
-            DLogConfig.getConfig().getReportConfig().report(dLogModels, new DLogReportCallback() {
-                @Override
-                public void onSuccess() {
-                    Logger.d("【日志数据上报成功】");
-                    PrefHelper.remove(REPORT_ERROR_COUNT_SP_KEY);//次数重置为0
-                    DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
-                }
-
-                @Override
-                public void onFail(String msg) {
-                    Logger.e("【日志数据上报失败】错误信息为"+msg);
-
-                    int anInt = PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0);
-                    PrefHelper.setInt(REPORT_ERROR_COUNT_SP_KEY,++anInt);//错误增加1次
-
-                    if (PrefHelper.getInt(REPORT_ERROR_COUNT_SP_KEY, 0)<3){
-                        DLog.sendAll();//上报失败以后，会再次重试。超过3次以后，不再上报。
-                    }
-
-                }
-            });
-        }else{
-            Logger.e("DLogBaseConfigProvider没有配置！");
+        if (dLogModels != null) {
+            for (DLogModel model : dLogModels) {
+                Logger.d("即将要上报的所有数据：" + "总长度为：" + dLogModels.size() + "，id为：" + model.getId() + "，内容为：", model.toString());
+            }
         }
 
+        if (DLogConfig.getConfig().getReportConfig() != null) {
+            return DLogConfig.getConfig().getReportConfig().reportSync(dLogModels);
+        }else{
+            Logger.e("DLogBaseConfigProvider没有配置！");
+            return null;
+        }
     }
+
 
     /**
      * 检查上报时间
@@ -99,7 +144,6 @@ public class DLogReportService extends JobIntentService {
                 return true; //时间合理通过
             }
         }
-
         return false;
     }
 }

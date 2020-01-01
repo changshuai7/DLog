@@ -10,6 +10,7 @@ import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.config.DLogReportConfigProvider;
 import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.report.DLogReportCallback;
+import com.shuai.dlog.report.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 
 import java.util.List;
@@ -88,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
     private void initReportDLog() {
         DLogConfig.getConfig().reportConfig(new DLogReportConfigProvider() {
             @Override
-            public void report(List<DLogModel> models, final DLogReportCallback callback) {
+            public DLogSyncReportResult reportSync(List<DLogModel> models) {
 
                 Logger.d("-----上层准备请求网络上报------");
                 /**
@@ -97,14 +98,16 @@ public class MainActivity extends AppCompatActivity {
                  *
                  */
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                return DLogSyncReportResult.SUCCESS;
+            }
 
-                callback.onSuccess();
-//                callback.onFail("网络请求失败");
-
+            @Override
+            public long reportSyncTimeOut() {
+                return super.reportSyncTimeOut();
             }
         });
 

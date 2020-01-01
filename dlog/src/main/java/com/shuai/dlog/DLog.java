@@ -8,6 +8,7 @@ import com.shuai.dlog.excutor.DLogThreadPoolManager;
 import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.service.DLogReportService;
 import com.shuai.dlog.utils.Logger;
+import com.shuai.dlog.utils.Util;
 
 import java.util.List;
 
@@ -32,12 +33,11 @@ public class DLog {
                 String contentJson = gson.toJson(content);
                 long insertIndex = DLogDBDao.getInstance(DLogConfig.getApp()).insertLog(new DLogModel(type, System.currentTimeMillis(), contentJson));
                 if (insertIndex != -1) {
+                    Logger.d("插入数据库成功，insertIndex="+insertIndex);
                     report(false);
                 } else {
                     Logger.e("插入数据库失败，insertIndex=-1");
                 }
-
-                printLog();
 
             }
         };
@@ -48,7 +48,6 @@ public class DLog {
      * 强制上报所有日志
      */
     public static void sendAll() {
-        printLog();
         report(true);
     }
 
@@ -74,19 +73,15 @@ public class DLog {
      * @param focusLaunch 是否强制上报
      */
     private static void report(boolean focusLaunch) {
-        DLogReportService.launchService(DLogConfig.getApp(), focusLaunch);
-    }
-
-    /**
-     * 打印日志
-     */
-    private static void printLog() {
-        //打印日志
-        List<DLogModel> dLogModels = DLogDBDao.getInstance(DLogConfig.getApp()).loadAllLogDatas();
-        if (dLogModels != null) {
-            for (DLogModel model : dLogModels) {
-                Logger.d("数据库所有数据：" + "总长度为：" + dLogModels.size() + "，id为：" + model.getId() + "，内容为：", model.toString());
+        if (focusLaunch){
+            DLogReportService.launchService(DLogConfig.getApp(), true);
+        }else{
+            if (Util.isServiceRunning(DLogConfig.getApp(),DLogReportService.class.getName())){
+                Logger.e("存在正在上报的任务..无法继续上报");
+            }else{
+                DLogReportService.launchService(DLogConfig.getApp(), false);
             }
         }
     }
+
 }
