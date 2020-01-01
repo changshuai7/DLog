@@ -10,6 +10,7 @@ import android.util.Log;
 
 import com.shuai.dlog.DLog;
 import com.shuai.dlog.config.DLogConfig;
+import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.utils.Logger;
 
 import java.util.Date;
@@ -33,7 +34,15 @@ public class DLogAlarmReportService extends Service {
 
         AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-        long time = DLogConfig.getConfig().getBaseConfig().reportAlarm(); //设置时间
+        long time; //设置时间
+
+        if (DLogConfig.getConfig().getBaseConfig()!=null && DLogConfig.getConfig().getBaseConfig().reportAlarm() > 0){
+            time = DLogConfig.getConfig().getBaseConfig().reportAlarm();
+        }else{
+            time = DLogConstant.REPORT_REPORT_ALARM_TIME;
+        }
+
+
         long triggerAtTime = SystemClock.elapsedRealtime() + time;
 
         Intent i = new Intent(this, DLogAlarmReceiver.class);

@@ -1,5 +1,7 @@
 package com.shuai.dlog.config;
 
+import com.shuai.dlog.constant.DLogConstant;
+
 /**
  * DLog基本配置
  * @author changshuai
@@ -20,7 +22,7 @@ abstract public class DLogBaseConfigProvider {
      * @return
      */
     public long reportDelay() {
-        return 5 * 60 * 1000;
+        return DLogConstant.REPORT_REPORT_DELAY_TIME;
     }
 
     /**
@@ -30,7 +32,7 @@ abstract public class DLogBaseConfigProvider {
      * @return
      */
     public long reportAlarm() {
-        return 10 * 60 * 1000;
+        return DLogConstant.REPORT_REPORT_ALARM_TIME;
     }
 
 
