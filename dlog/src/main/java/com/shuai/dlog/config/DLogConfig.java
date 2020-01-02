@@ -49,11 +49,13 @@ public class DLogConfig {
             this.baseConfig = baseConfig;
 
             //定时任务时间大于0.则开启定时任务
-            if (baseConfig.reportAlarm() > 0){
+            if (baseConfig!=null && baseConfig.reportAlarm() > 0){
                 DLogConfig.getApp().startService(new Intent(DLogConfig.getApp(), DLogAlarmReportService.class));
             }
             //设置Log日志打印
-            Logger.debug(baseConfig.isDebug());
+            if (baseConfig!=null){
+                Logger.debug(baseConfig.isDebug());
+            }
             return this;
         }
 
