@@ -5,7 +5,7 @@ import android.content.Context;
 
 import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.model.DLogModel;
-import com.shuai.dlog.report.DLogSyncReportResult;
+import com.shuai.dlog.result.DLogSyncReportResult;
 
 import java.util.List;
 

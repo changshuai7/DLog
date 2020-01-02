@@ -4,7 +4,7 @@ import android.content.Context;
 
 import com.shuai.dlog.config.DLogReportConfigProvider;
 import com.shuai.dlog.model.DLogModel;
-import com.shuai.dlog.report.DLogSyncReportResult;
+import com.shuai.dlog.result.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 
 import java.util.List;
@@ -35,6 +35,6 @@ public class AppDLogReportConfig extends DLogReportConfigProvider {
      */
     @Override
     public long reportSyncTimeOut() {
-        return 5*1000;
+        return 30*1000;
     }
 }

@@ -10,7 +10,7 @@ import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.db.DLogDBDao;
 import com.shuai.dlog.model.DLogModel;
-import com.shuai.dlog.report.DLogSyncReportResult;
+import com.shuai.dlog.result.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 import com.shuai.dlog.utils.PrefHelper;
 import com.shuai.dlog.utils.Util;
