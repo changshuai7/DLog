@@ -15,7 +15,7 @@ public class AppDLogBaseConfig extends DLogBaseConfigProvider {
     }
 
     /**
-     * 延时上报策略配置
+     * 延时上报策略配置。默认为5分钟
      * 若<=0.则取消延时上报策略
      *
      * @return
@@ -26,7 +26,7 @@ public class AppDLogBaseConfig extends DLogBaseConfigProvider {
     }
 
     /**
-     * 定时上报策略配置
+     * 定时上报策略配置。默认为10分钟
      * 若<=0.则取消定时上报策略
      *
      * @return

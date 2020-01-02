@@ -35,62 +35,65 @@ DLog有三种打点策略:
 
 
 ### 3.初始化。
-在Application中初始化
 
+##### 在项目中创建两个配置类：
+1、基础配置类，继承DLogBaseConfigProvider
 ```
-/**
- * 初始化DLog
- */
-DLogConfig.init(this).baseConfig(new DLogBaseConfigProvider() {
-        /**
-         * 是否是debug模式
-         * @return
-         */
-        @Override
-        public boolean isDebug() {
-                return BuildConfig.DEBUG;
-        }
-
-        /**
-         * 延时上报策略配置。默认为5分钟
-         * 若<=0.则取消延时上报策略
-         * @return
-         */
-        @Override
-        public long reportDelay() {
-                return 5 * 1000;//为实现效果，这里定义为5秒
-        }
-
-        /**
-         * 定时上报策略配置，默认为10分钟
-         * 若<=0.则取消定时上报策略
-         * @return
-         */
-        @Override
-        public long reportAlarm() {
-                return 15*1000;//为实现效果，这里定义为15秒
-        }
-});
-```
-
-在常驻项目的Activity或者Service中做如下配置
-```
-DLogConfig.getConfig().reportConfig(new DLogReportConfigProvider() {
+public class AppDLogBaseConfig extends DLogBaseConfigProvider {
+    /**
+     * 是否是debug模式
+     *
+     * @return
+     */
     @Override
-    public DLogSyncReportResult reportSync(List<DLogModel> models) {
+    public boolean isDebug() {
+        return BuildConfig.DEBUG;
+    }
 
-        Logger.d("-----上层准备请求网络上报------");
+    /**
+     * 延时上报策略配置。默认为5分钟
+     * 若<=0.则取消延时上报策略
+     *
+     * @return
+     */
+    @Override
+    public long reportDelay() {
+        return 5 * 1000;//为实现效果，这里定义为5秒
+    }
+
+    /**
+     * 定时上报策略配置。默认为10分钟
+     * 若<=0.则取消定时上报策略
+     *
+     * @return
+     */
+    @Override
+    public long reportAlarm() {
+        return 15 * 1000;//为实现效果，这里定义为15秒
+    }
+}
+
+```
+2、上报配置类，继承DLogReportConfigProvider
+```
+public class AppDLogReportConfig extends DLogReportConfigProvider {
+    @Override
+    public DLogSyncReportResult reportSync(Context context, List<DLogModel> models) {
+
+        Logger.d("-----上层准备请求网络上报------:"+context.toString());
+
         /**
          * 这里的List<DLogModel> models为数据库中所有的日志内容。
          * 建议开发者在此处上层通过自己的网络请求将日志上传到服务器，同时给DLog一个结果回调
          */
+
         try {
             Thread.sleep(2000);//模拟网络请求，耗时2秒上报
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return DLogSyncReportResult.SUCCESS;//成功回调
-       //  return DLogSyncReportResult.FAIL;//失败回调
+        return DLogSyncReportResult.SUCCESS;
+        //return DLogSyncReportResult.FAIL;//失败回调
     }
 
     /**
@@ -101,8 +104,19 @@ DLogConfig.getConfig().reportConfig(new DLogReportConfigProvider() {
     public long reportSyncTimeOut() {
         return 5*1000;
     }
-});
+}
 ```
+##### 在Application中初始化
+
+```
+/**
+ * 初始化DLog
+ */
+DLogConfig.init(this)
+        .baseConfig(new AppDLogBaseConfig())
+        .reportConfig(new AppDLogReportConfig());
+```
+
 注意
 
 1、reportSync方法为非主线程，请勿直接做和UI相关的内容。
@@ -115,7 +129,7 @@ DLogConfig.getConfig().reportConfig(new DLogReportConfigProvider() {
 
 ## 三、使用
 
-1、DB中存储的数据Model：
+##### 1、DB中存储的数据Model：
 
 ```
 private long id;//数据库自增id，无实际意义
@@ -126,20 +140,20 @@ private String content;//内容
 ```
 开发者可以根据自己情况取使用type和content
 
-2、存数据：
+##### 2、存数据：
 ```
 DLog.write(String type, T content); //T为javabean数据 务必保证通过Gson.toJson转换不会出错。
 ```
-3、立即上传数据（全量数据）
+##### 3、立即上传数据（全量数据）
 ```
 DLog.sendAll();
 ```
 
-4、删数据(全量数据)
+##### 4、删数据(全量数据)
 ```
 DLog.deleteAll();
 ```
-5、获取数据(全量数据)
+##### 5、获取数据(全量数据)
 ```
 DLog.getAll();
 返回List<DLogModel>
