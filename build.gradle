@@ -41,7 +41,7 @@ ext {
     userOrg = 'shuai'
     groupId = 'com.shuai'
     artifactId = 'dlog'
-    publishVersion = '0.0.2'
+    publishVersion = '0.0.3'
     desc = 'a tools for android developer to write log'
     website = 'https://github.com/changshuai7/DLog'
 

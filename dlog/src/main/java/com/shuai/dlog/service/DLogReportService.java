@@ -10,12 +10,11 @@ import com.shuai.dlog.config.DLogConfig;
 import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.db.DLogDBDao;
 import com.shuai.dlog.model.DLogModel;
-import com.shuai.dlog.report.DLogSyncReportResult;
+import com.shuai.dlog.result.DLogSyncReportResult;
 import com.shuai.dlog.utils.Logger;
 import com.shuai.dlog.utils.PrefHelper;
 import com.shuai.dlog.utils.Util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -35,21 +34,17 @@ import java.util.concurrent.TimeoutException;
  * <p>
  * 二、>>>>> DLog的埋点策略 <<<<<
  * DLog有三种埋点策略:
- * 1、策略一：定时轮循上报，即启动DLogAlarmReportService服务即可定期上报
- * 2、策略二、延时上报，即在写入日志的时候记录时间，下次再写入日志时，如果两次写入日志间隔的时间大于约定的deploy时间，那么立即上报。否则不上报。
- * 3、策略三、强制上报。对于一些非常紧急的日志，可以执行DLog.sendAll();强制上报所有日志。
+ * 1、策略一：定时（轮循）上报。即启动DLogAlarmReportService服务即可定期上报
+ * 2、策略二、延时上报。即在写入日志的时候记录时间，下次再写入日志时，如果两次写入日志间隔的时间大于约定的deploy时间，那么立即上报。否则不上报。
+ * 3、策略三、强制（手动）上报。对于一些非常紧急的日志，可以执行DLog.sendAll();强制上报所有日志。
  * <p>
  * <p>
  * 但是有几个棘手的问题，
  * 问题1：
- * 如果在某个时间定时上报时间到了，此时又正好有一个延时上报满足时间条件也准备上报，或者还有一个日志在准备做强制上报。那么多者同时满足条件的上报任务，同时上报，必然会导致上报内容重复。
- * 针对此问题的解决方案就是：上报的任务必须one by one。在同一时间内只可以允许有一个上报任务。如果有多个，那么请排队等待。
- * 具体的实现方式就是每次上报时候，检查是否有JobIntentService存活。没有的话，立即上报，有的话，等待上个上报任务完成，再执行上报。
+ * 如果多个上报策略同时被触发了怎么办？
+ *      针对定时上报、强制上报：如果同时触发了，那么会进入队列等待。依次执行上报。也就是one by one串行执行上报。避免同时并行执行上报，导致的上报内容重复。
+ *      针对延时上报：触发条件为：每次写入数据库以后，都要去检查是否需要上报。如果 ①开启了delay策略、delay时间检查通过 ②并且当前没有正在执行的上报任务（无JobIntentService存活）。那么立即上报。否则直接忽略不予上报。
  * 所以规定，在外部实现的上报日志的方法reportSync中，要求必须是同步耗时的。否则任务无法one by one
- * <p>
- * 需要注意的是：
- * 延时上报只有在符合deploy时间的情况下才会上报。小于deploy时间的会自动忽略不予上报
- * 定时轮训上报、强制上报、延时上报如果同时满足上报条件了，即同时到了上报的时间点，都会进入上报队列等待上报，永不丢失
  * <p>
  * 问题2：
  * 如果在上报日志的时候，有新的日志写入了，那么怎么处理？
@@ -76,20 +71,24 @@ public class DLogReportService extends JobIntentService {
     private static final int JOB_ID = 1000;
     private static final String TAG = DLogReportService.class.getSimpleName();
 
-    public static void launchService(Context ctx, boolean focusLaunch) {
-        if (reportCheck() || focusLaunch) {
-            try {
-                enqueueWork(ctx, DLogReportService.class, JOB_ID, new Intent(ctx, DLogReportService.class));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    /**
+     * 启动上报任务
+     * 如果有存在的上报任务，则进入队列等待
+     * @param ctx
+     */
+    public static void launchService(Context ctx) {
+        try {
+            enqueueWork(ctx, DLogReportService.class, JOB_ID, new Intent(ctx, DLogReportService.class));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
     }
 
     @Override
     protected void onHandleWork(@NonNull Intent intent) {
         /**
-         * JobIntentService执行任务的顺序为one by one。所以最好保证onHandleWork中的任务为同步任务
+         * JobIntentService执行任务的顺序为one by one。必须保证onHandleWork中的任务为同步任务
          */
         Logger.d(TAG, "onHandleWork执行");
         if (Util.isNetworkConnected(DLogConfig.getApp())) {
@@ -139,10 +138,12 @@ public class DLogReportService extends JobIntentService {
 
                 PrefHelper.remove(REPORT_ERROR_COUNT_SP_KEY);//失败次数重置为0
                 if (result.getUuids() != null) {
-                    DLogDBDao.getInstance(DLogConfig.getApp()).deleteLogDatasByUuid(result.getUuids());//TODO 删除可能会失败。出现几率极小，暂时先不处理
+                    //注意：这里不可以清空所有日志，万一在上报的过程中，有新的日志写入呢？必须根据日志的uuid删除才可靠。
+                    int[] ints = DLogDBDao.getInstance(DLogConfig.getApp()).deleteLogDatasByUuid(result.getUuids());
+                    if (ints == null || result.getUuids().length != ints.length){
+                        Logger.e(TAG,"上报成功后的删除日志出现异常");
+                    }
                 }
-                //注意：这里不可以清空所有日志，万一在上报的过程中，有新的日志写入呢？必须根据日志的uuid删除才可靠。
-                //DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
 
             } else if (result.getResult() == DLogSyncReportResult.FAIL) {
 
@@ -188,7 +189,7 @@ public class DLogReportService extends JobIntentService {
             Logger.d(TAG,"即将要上报的所有数据为：" + "length=" + dLogModels.size() + ",id=" + model.getId() + ",uuid=" + model.getUuid() + ",content=" + model.toString());
         }
 
-        DLogSyncReportResult dLogSyncReportResult = DLogConfig.getConfig().getReportConfig().reportSync(dLogModels);
+        DLogSyncReportResult dLogSyncReportResult = DLogConfig.getConfig().getReportConfig().reportSync(this,dLogModels);
         if (dLogSyncReportResult == null) {
             Logger.e(TAG,"异常：上层的reportSync不能返回为null");
             return null;
@@ -225,22 +226,4 @@ public class DLogReportService extends JobIntentService {
         }
     }
 
-
-    /**
-     * 检查延时上报时间
-     *
-     * @return true：可以上报；false：不可以上报
-     */
-    public static boolean reportCheck() {
-
-        long lastReportTime = PrefHelper.getLong(REPORT_TIME_SP_KEY, 0);
-        long curTime = System.currentTimeMillis();
-        if (DLogConfig.getConfig().getBaseConfig() != null && DLogConfig.getConfig().getBaseConfig().reportDelay() > 0) { //延时>0的情况下，开启延时上报策略。
-            if (curTime - lastReportTime > DLogConfig.getConfig().getBaseConfig().reportDelay()) {
-                Logger.d("DLogReportService", "延时上报策略通过，进入上报队列 " + "lastTime = " + lastReportTime + ",curTime=" + curTime + "，线程名:" + Thread.currentThread().getName());
-                return true; //时间合理通过
-            }
-        }
-        return false;
-    }
 }

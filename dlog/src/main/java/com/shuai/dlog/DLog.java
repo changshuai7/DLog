@@ -11,9 +11,12 @@ import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.service.DLogAlarmReportService;
 import com.shuai.dlog.service.DLogReportService;
 import com.shuai.dlog.utils.Logger;
+import com.shuai.dlog.utils.PrefHelper;
 import com.shuai.dlog.utils.Util;
 
 import java.util.List;
+
+import static com.shuai.dlog.service.DLogReportService.REPORT_TIME_SP_KEY;
 
 /**
  * DLog入口
@@ -37,8 +40,11 @@ public class DLog {
                 long insertIndex = DLogDBDao.getInstance(DLogConfig.getApp()).insertLog(new DLogModel(type, System.currentTimeMillis(), contentJson));
                 if (insertIndex != -1) {
                     Logger.d("插入数据库成功，insertIndex="+insertIndex);
-                    //每条数据插入成功，都要去尝试上报，不过尝试上报会检查是否符合delay时间限制，只有符合delay时间限制的，才会上报。
-                    report(false);
+                    // 每次写入数据库以后，都要去检查是否需要上报。如果 ①开启了delay策略、delay时间检查通过 ②并且当前没有正在执行的上报任务。那么立即上报。
+                    // 之所以要在 当前没有正在执行的上报任务时 才上报，就是因为write是一个频繁操作。有可能在某个时间，满足delay时间检查通过的数据有多条。而我们要求：delay策略满足时间条件后只允许上报一次。否则发生了多次上报会使得延时策略失去意义。
+                    if (!Util.isServiceRunning(DLogConfig.getApp(),DLogReportService.class.getName()) && reportDelayCheck()){
+                        report();
+                    }
                 } else {
                     Logger.e("插入数据库失败，insertIndex=-1");
                 }
@@ -53,7 +59,7 @@ public class DLog {
      * 强制上报所有日志（如果有正在上报的任务，会进入上报日志队列中等待）
      */
     public static void sendAll() {
-        report(true);
+        report();
     }
 
     /**
@@ -83,22 +89,29 @@ public class DLog {
 
     /**
      * 上报日志
-     *
-     * @param focusLaunch 是否强制上报
-     *                    需要注意的是：
-     *                    如果是true，则为强制上报，即使此刻有上报任务，也依然会进入队列等待。
-     *                    如果是false，则为非强制上报。默认遵循着延时上报策略：有正在上报的任务，那么舍弃；如果没有，进入内部，去检查延时时间，延时时间满足，则上报
      */
-    private static void report(boolean focusLaunch) {
-        if (focusLaunch){
-            DLogReportService.launchService(DLogConfig.getApp(), true);
-        }else{
-            if (Util.isServiceRunning(DLogConfig.getApp(),DLogReportService.class.getName())){
-                Logger.e("存在正在上报的任务..无法继续上报");
-            }else{
-                DLogReportService.launchService(DLogConfig.getApp(), false);
+    private static void report() {
+
+        DLogReportService.launchService(DLogConfig.getApp());
+
+    }
+
+    /**
+     * 检查延时上报策略和时间检查是否通过
+     *
+     * @return true：通过；false：不通过
+     */
+    private static boolean reportDelayCheck() {
+
+        long lastReportTime = PrefHelper.getLong(REPORT_TIME_SP_KEY, 0);
+        long curTime = System.currentTimeMillis();
+        if (DLogConfig.getConfig().getBaseConfig() != null && DLogConfig.getConfig().getBaseConfig().reportDelay() > 0) { //延时>0的情况下，说明开启了延时上报策略。
+            if (curTime - lastReportTime > DLogConfig.getConfig().getBaseConfig().reportDelay()) {//时间合理通过
+                Logger.d("DLogReportService", "延时上报策略通过，进入上报队列 " + "lastTime = " + lastReportTime + ",curTime=" + curTime + "，线程名:" + Thread.currentThread().getName());
+                return true; //时间合理通过
             }
         }
+        return false;
     }
 
 }

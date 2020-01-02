@@ -1,4 +1,4 @@
-package com.shuai.dlog.report;
+package com.shuai.dlog.result;
 
 /**
  * 结果回调
