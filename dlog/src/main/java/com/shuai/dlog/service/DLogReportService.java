@@ -34,21 +34,17 @@ import java.util.concurrent.TimeoutException;
  * <p>
  * 二、>>>>> DLog的埋点策略 <<<<<
  * DLog有三种埋点策略:
- * 1、策略一：定时轮循上报，即启动DLogAlarmReportService服务即可定期上报
- * 2、策略二、延时上报，即在写入日志的时候记录时间，下次再写入日志时，如果两次写入日志间隔的时间大于约定的deploy时间，那么立即上报。否则不上报。
- * 3、策略三、强制上报。对于一些非常紧急的日志，可以执行DLog.sendAll();强制上报所有日志。
+ * 1、策略一：定时（轮循）上报。即启动DLogAlarmReportService服务即可定期上报
+ * 2、策略二、延时上报。即在写入日志的时候记录时间，下次再写入日志时，如果两次写入日志间隔的时间大于约定的deploy时间，那么立即上报。否则不上报。
+ * 3、策略三、强制（手动）上报。对于一些非常紧急的日志，可以执行DLog.sendAll();强制上报所有日志。
  * <p>
  * <p>
  * 但是有几个棘手的问题，
  * 问题1：
- * 如果在某个时间定时上报时间到了，此时又正好有一个延时上报满足时间条件也准备上报，或者还有一个日志在准备做强制上报。那么多者同时满足条件的上报任务，同时上报，必然会导致上报内容重复。
- * 针对此问题的解决方案就是：上报的任务必须one by one。在同一时间内只可以允许有一个上报任务。如果有多个，那么请排队等待。
- * 具体的实现方式就是每次上报时候，检查是否有JobIntentService存活。没有的话，立即上报，有的话，等待上个上报任务完成，再执行上报。
+ * 如果多个上报策略同时被触发了怎么办？
+ *      针对定时上报、强制上报：如果同时触发了，那么会进入队列等待。依次执行上报。也就是one by one串行执行上报。避免同时并行执行上报，导致的上报内容重复。
+ *      针对延时上报：触发条件为：每次写入数据库以后，都要去检查是否需要上报。如果 ①开启了delay策略、delay时间检查通过 ②并且当前没有正在执行的上报任务（无JobIntentService存活）。那么立即上报。否则直接忽略不予上报。
  * 所以规定，在外部实现的上报日志的方法reportSync中，要求必须是同步耗时的。否则任务无法one by one
- * <p>
- * 需要注意的是：
- * 延时上报只有在符合deploy时间的情况下才会上报。小于deploy时间的会自动忽略不予上报
- * 定时轮训上报、强制上报、延时上报如果同时满足上报条件了，即同时到了上报的时间点，都会进入上报队列等待上报，永不丢失
  * <p>
  * 问题2：
  * 如果在上报日志的时候，有新的日志写入了，那么怎么处理？
@@ -77,25 +73,22 @@ public class DLogReportService extends JobIntentService {
 
     /**
      * 启动上报任务
+     * 如果有存在的上报任务，则进入队列等待
      * @param ctx
-     * @param focusLaunch
-     *          如果true： 强制立即上报（如果有存在的上报任务，则进入队列等待）
-     *          如果false：继续检查是否满足延时上报条件，满足则上报。不满足则舍弃。
      */
-    public static void launchService(Context ctx, boolean focusLaunch) {
-        if (focusLaunch || reportDelayCheck()) {
-            try {
-                enqueueWork(ctx, DLogReportService.class, JOB_ID, new Intent(ctx, DLogReportService.class));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    public static void launchService(Context ctx) {
+        try {
+            enqueueWork(ctx, DLogReportService.class, JOB_ID, new Intent(ctx, DLogReportService.class));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
     }
 
     @Override
     protected void onHandleWork(@NonNull Intent intent) {
         /**
-         * JobIntentService执行任务的顺序为one by one。所以最好保证onHandleWork中的任务为同步任务
+         * JobIntentService执行任务的顺序为one by one。必须保证onHandleWork中的任务为同步任务
          */
         Logger.d(TAG, "onHandleWork执行");
         if (Util.isNetworkConnected(DLogConfig.getApp())) {
@@ -233,22 +226,4 @@ public class DLogReportService extends JobIntentService {
         }
     }
 
-
-    /**
-     * 检查延时上报时间
-     *
-     * @return true：可以上报；false：不可以上报
-     */
-    public static boolean reportDelayCheck() {
-
-        long lastReportTime = PrefHelper.getLong(REPORT_TIME_SP_KEY, 0);
-        long curTime = System.currentTimeMillis();
-        if (DLogConfig.getConfig().getBaseConfig() != null && DLogConfig.getConfig().getBaseConfig().reportDelay() > 0) { //延时>0的情况下，开启延时上报策略。
-            if (curTime - lastReportTime > DLogConfig.getConfig().getBaseConfig().reportDelay()) {
-                Logger.d("DLogReportService", "延时上报策略通过，进入上报队列 " + "lastTime = " + lastReportTime + ",curTime=" + curTime + "，线程名:" + Thread.currentThread().getName());
-                return true; //时间合理通过
-            }
-        }
-        return false;
-    }
 }

@@ -23,31 +23,37 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                TestLogBean bean = new TestLogBean();
-                bean.setName("小黑0");
-                bean.setAge(40);
-                DLog.write(Thread.currentThread().getName() + "", bean);
+                for (int i = 0;i<500;i++){
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            TestLogBean bean = new TestLogBean();
+                            bean.setName("小红");
+                            bean.setAge(120);
+                            DLog.write(Thread.currentThread().getName() + "", bean);
+                        }
+                    }).start();
 
-
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        TestLogBean bean = new TestLogBean();
-                        bean.setName("小红");
-                        bean.setAge(120);
-                        DLog.write(Thread.currentThread().getName() + "", bean);
-                    }
-                }).start();
-
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        TestLogBean bean = new TestLogBean();
-                        bean.setName("小蓝");
-                        bean.setAge(200);
-                        DLog.write(Thread.currentThread().getName() + "", bean);
-                    }
-                }).start();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            TestLogBean bean = new TestLogBean();
+                            bean.setName("小蓝");
+                            bean.setAge(200);
+                            DLog.write(Thread.currentThread().getName() + "", bean);
+                        }
+                    }).start();
+                }
 
 
             }
