@@ -15,7 +15,6 @@ import com.shuai.dlog.utils.Logger;
 import com.shuai.dlog.utils.PrefHelper;
 import com.shuai.dlog.utils.Util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -76,8 +75,15 @@ public class DLogReportService extends JobIntentService {
     private static final int JOB_ID = 1000;
     private static final String TAG = DLogReportService.class.getSimpleName();
 
+    /**
+     * 启动上报任务
+     * @param ctx
+     * @param focusLaunch
+     *          如果true： 强制立即上报（如果有存在的上报任务，则进入队列等待）
+     *          如果false：继续检查是否满足延时上报条件，满足则上报。不满足则舍弃。
+     */
     public static void launchService(Context ctx, boolean focusLaunch) {
-        if (reportCheck() || focusLaunch) {
+        if (focusLaunch || reportDelayCheck()) {
             try {
                 enqueueWork(ctx, DLogReportService.class, JOB_ID, new Intent(ctx, DLogReportService.class));
             } catch (Exception e) {
@@ -139,10 +145,12 @@ public class DLogReportService extends JobIntentService {
 
                 PrefHelper.remove(REPORT_ERROR_COUNT_SP_KEY);//失败次数重置为0
                 if (result.getUuids() != null) {
-                    DLogDBDao.getInstance(DLogConfig.getApp()).deleteLogDatasByUuid(result.getUuids());//TODO 删除可能会失败。出现几率极小，暂时先不处理
+                    //注意：这里不可以清空所有日志，万一在上报的过程中，有新的日志写入呢？必须根据日志的uuid删除才可靠。
+                    int[] ints = DLogDBDao.getInstance(DLogConfig.getApp()).deleteLogDatasByUuid(result.getUuids());
+                    if (ints == null || result.getUuids().length != ints.length){
+                        Logger.e(TAG,"上报成功后的删除日志出现异常");
+                    }
                 }
-                //注意：这里不可以清空所有日志，万一在上报的过程中，有新的日志写入呢？必须根据日志的uuid删除才可靠。
-                //DLogDBDao.getInstance(DLogConfig.getApp()).deleteAllLogDatas();//日志记录全部清空
 
             } else if (result.getResult() == DLogSyncReportResult.FAIL) {
 
@@ -188,7 +196,7 @@ public class DLogReportService extends JobIntentService {
             Logger.d(TAG,"即将要上报的所有数据为：" + "length=" + dLogModels.size() + ",id=" + model.getId() + ",uuid=" + model.getUuid() + ",content=" + model.toString());
         }
 
-        DLogSyncReportResult dLogSyncReportResult = DLogConfig.getConfig().getReportConfig().reportSync(dLogModels);
+        DLogSyncReportResult dLogSyncReportResult = DLogConfig.getConfig().getReportConfig().reportSync(this,dLogModels);
         if (dLogSyncReportResult == null) {
             Logger.e(TAG,"异常：上层的reportSync不能返回为null");
             return null;
@@ -231,7 +239,7 @@ public class DLogReportService extends JobIntentService {
      *
      * @return true：可以上报；false：不可以上报
      */
-    public static boolean reportCheck() {
+    public static boolean reportDelayCheck() {
 
         long lastReportTime = PrefHelper.getLong(REPORT_TIME_SP_KEY, 0);
         long curTime = System.currentTimeMillis();

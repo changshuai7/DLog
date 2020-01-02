@@ -1,6 +1,8 @@
 package com.shuai.dlog.config;
 
 
+import android.content.Context;
+
 import com.shuai.dlog.constant.DLogConstant;
 import com.shuai.dlog.model.DLogModel;
 import com.shuai.dlog.report.DLogSyncReportResult;
@@ -18,7 +20,7 @@ abstract public class DLogReportConfigProvider {
      * @param models
      * @return
      */
-    abstract public DLogSyncReportResult reportSync(List<DLogModel> models);
+    abstract public DLogSyncReportResult reportSync(Context context,List<DLogModel> models);
 
     /**
      * 设置同步请求的超时时间
