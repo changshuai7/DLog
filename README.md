@@ -167,3 +167,49 @@ DLog.getAll();
 2、上报出错以后（得到上层返回的失败回调）会有三次重试机会。三次失败以后，不再重试。直到以后上报成功，则重新计次。
 
 3、开发者无需关心日志的丢失、重复等问题，DLog内部已经统统处理好。
+
+## 五、性能和可靠性
+极限测试：在1秒左右的时间内创建1000个线程，每个线程写入一条数据。总计1000条数据
+```
+for (int i = 0;i<500;i++){
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            TestLogBean bean = new TestLogBean();
+            bean.setName("小红");
+            bean.setAge(120);
+            DLog.write(Thread.currentThread().getName() + "", bean);
+        }
+    }).start();
+
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            TestLogBean bean = new TestLogBean();
+            bean.setName("小蓝");
+            bean.setAge(200);
+            DLog.write(Thread.currentThread().getName() + "", bean);
+        }
+    }).start();
+}
+```
+最终测试结果：
+
+```
+2020-01-02 17:22:49.217 7171-8275/com.shuai.example.dlog D/DLogReportService: 【日志数据上报成功】上报的长度为768
+2020-01-02 17:22:50.931 7171-8275/com.shuai.example.dlog D/DLogReportService: 【日志数据上报成功】上报的长度为145
+2020-01-02 17:26:01.753 7171-7171/com.shuai.example.dlog D/DLog: 还剩数据条数：87
+```
+1、App无任何卡顿、阻塞现象。
+
+2、数据无一条丢失
