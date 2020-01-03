@@ -3,11 +3,12 @@ package com.shuai.dlog.model;
 import android.content.ContentValues;
 import android.database.Cursor;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class DLogModel {
+public class DLogModel implements Serializable {
 
     public static final String DLOG_DB_ID = "dlog_db_id";
     public static final String DLOG_DB_UUID = "dlog_db_uuid";
