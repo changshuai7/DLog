@@ -169,36 +169,18 @@ DLog.getAll();
 3、开发者无需关心日志的丢失、重复等问题，DLog内部已经统统处理好。
 
 ## 五、性能和可靠性
-极限测试：在1秒左右的时间内创建1000个线程，每个线程写入一条数据。总计1000条数据
+极限测试：开5个线程，写入10000条数据测试：
 ```
-for (int i = 0;i<500;i++){
+for (int i = 0;i<5;i++){
     new Thread(new Runnable() {
         @Override
         public void run() {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            for (int i = 0 ;i<2000;i++){
+                TestLogBean bean = new TestLogBean();
+                bean.setName("小红"+System.currentTimeMillis());
+                bean.setAge(20);
+                DLog.write(Thread.currentThread().getName() + "", bean);
             }
-            TestLogBean bean = new TestLogBean();
-            bean.setName("小红");
-            bean.setAge(120);
-            DLog.write(Thread.currentThread().getName() + "", bean);
-        }
-    }).start();
-
-    new Thread(new Runnable() {
-        @Override
-        public void run() {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            TestLogBean bean = new TestLogBean();
-            bean.setName("小蓝");
-            bean.setAge(200);
-            DLog.write(Thread.currentThread().getName() + "", bean);
         }
     }).start();
 }
@@ -206,10 +188,16 @@ for (int i = 0;i<500;i++){
 最终测试结果：
 
 ```
-2020-01-02 17:22:49.217 7171-8275/com.shuai.example.dlog D/DLogReportService: 【日志数据上报成功】上报的长度为768
-2020-01-02 17:22:50.931 7171-8275/com.shuai.example.dlog D/DLogReportService: 【日志数据上报成功】上报的长度为145
-2020-01-02 17:26:01.753 7171-7171/com.shuai.example.dlog D/DLog: 还剩数据条数：87
+2020-01-03 10:14:27.671 22741-22827/com.shuai.example.dlog D/DLog: 插入数据库成功，insertIndex=1
+...
+...
+...
+2020-01-03 10:17:14.983 22741-22818/com.shuai.example.dlog D/DLog: 插入数据库成功，insertIndex=10000
 ```
+
+
 1、App无任何卡顿、阻塞现象。
 
-2、数据无一条丢失
+2、耗时167秒，平均每插入一条数据耗时：16.7ms（后采用单线程上传10000条数据耗时172秒，插入速度17.2m/条）。
+
+3、同时在此过程中每隔5秒延时上报，测试结果无一条数据丢失。
